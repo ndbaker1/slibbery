@@ -4,6 +4,7 @@
 typedef int (*add_func)(int, int);
 typedef void (*print_hello_func)();
 typedef int (*add_and_double_func)(int, int);
+typedef void (*set_five_func)(int *);
 
 int main() {
     void *handle = dlopen("./test_output/target/release/libmock_lib.so", RTLD_LAZY);
@@ -30,6 +31,12 @@ int main() {
         return 1;
     }
 
+    set_five_func set_five = (set_five_func)dlsym(handle, "set_five");
+    if (!set_five) {
+        fprintf(stderr, "Failed to find set_five function: %s\n", dlerror());
+        return 1;
+    }
+
     int result_add = add(5, 3);
     printf("dlopen: Testing add(5, 3) = %d\n", result_add);
     if (result_add != 8) {
@@ -44,6 +51,14 @@ int main() {
     printf("dlopen: Testing add_and_double(5, 3) = %d\n", result_double);
     if (result_double != 16) {
         fprintf(stderr, "add_and_double(5, 3) failed: expected 16, got %d\n", result_double);
+        return 1;
+    }
+
+    int value = 0;
+    set_five(&value);
+    printf("dlopen: Testing set_five(&value), value = %d\n", value);
+    if (value != 5) {
+        fprintf(stderr, "set_five failed: expected 5, got %d\n", value);
         return 1;
     }
 

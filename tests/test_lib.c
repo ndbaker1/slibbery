@@ -12,3 +12,7 @@ int add_and_double(int a, int b) {
     int sum = add(a, b);
     return sum * 2;
 }
+
+void set_five(int *ptr) {
+    *ptr = 5;
+}

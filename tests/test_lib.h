@@ -4,5 +4,6 @@
 int add(int a, int b);
 void print_hello(void);
 int add_and_double(int a, int b);
+void set_five(int *ptr);
 
 #endif
