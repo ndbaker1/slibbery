@@ -1,4 +1,4 @@
 /target
-tests/libtest.so
+tests/*.so
+tests/*.o
 tests/test_output/
-tests/test_program*

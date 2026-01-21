@@ -4,7 +4,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-use slibbery::{DwarfProvider, FunctionSignature, HeaderProvider, SignatureProvider};
+use slibbery::{
+    providers::{HeaderProvider, SignatureProvider},
+    FunctionSignature,
+};
 
 fn copy_templates_to_output(
     output_dir: &std::path::Path,
@@ -113,22 +116,11 @@ pub extern "C" fn {func}() {{
     Ok(code)
 }
 
-fn replace_placeholder_in_file(
-    file_path: &PathBuf,
-    placeholder: &str,
-    replacement: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let content = fs::read_to_string(file_path)?;
-    let new_content = content.replace(placeholder, replacement);
-    fs::write(file_path, new_content)?;
-    Ok(())
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 3 || args.len() > 6 {
+    if args.len() < 4 || args.len() > 6 {
         eprintln!(
-            "Usage: {} <input.so> <output_dir> [header.h] [--lib-path <path>]",
+            "Usage: {} <input.so> <output_dir> <header.h> [--lib-path <path>]",
             args[0]
         );
         std::process::exit(1);
@@ -136,10 +128,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let so_path = &args[1];
     let output_dir = PathBuf::from(&args[2]);
-    let mut header_path = None;
+    let header_path = args[3].clone();
     let mut lib_path_override = None;
 
-    let mut i = 3;
+    let mut i = 4;
     while i < args.len() {
         match args[i].as_str() {
             "--lib-path" => {
@@ -152,15 +144,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             _ => {
-                if header_path.is_none() {
-                    header_path = Some(args[i].clone());
-                } else {
-                    eprintln!("Error: unexpected argument '{}'", args[i]);
-                    std::process::exit(1);
-                }
-                i += 1;
+                eprintln!("Error: unexpected argument '{}'", args[i]);
+                std::process::exit(1);
             }
         }
+        i += 1;
     }
 
     let buffer = fs::read(so_path)?;
@@ -179,14 +167,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Found {} functions", functions.len());
 
-    // Get function signatures from appropriate provider
-    let provider: Box<dyn SignatureProvider> = if let Some(header) = header_path {
-        println!("Using header file: {}", header);
-        Box::new(HeaderProvider::new(header.to_string()))
-    } else {
-        println!("Using DWARF debug info");
-        Box::new(DwarfProvider)
-    };
+    // Get function signatures from header provider
+    println!("Using header file: {}", header_path);
+    let provider: Box<dyn SignatureProvider> = Box::new(HeaderProvider::new(header_path));
 
     let signatures = provider.get_signatures(&elf, &buffer).unwrap_or_default();
     println!("Parsed {} function signatures", signatures.len());
@@ -206,7 +189,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // For relative paths, assume from output_dir/src/, go up and then to so_path
         format!("../../{}", so_path)
     };
-    let needs_copy = false; // We always use the provided path directly
 
     let lib_include = format!(
         "const ORIGINAL_SO: &[u8] = include_bytes!(\"{}\");",
@@ -214,33 +196,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Replace placeholders in lib.rs
-    replace_placeholder_in_file(
-        &output_dir.join("src/lib.rs"),
-        "FUNCTION_STUBS_PLACEHOLDER",
-        &function_stubs,
-    )?;
-
-    replace_placeholder_in_file(
-        &output_dir.join("src/lib.rs"),
-        "LIB_INCLUDE_PLACEHOLDER",
-        &lib_include,
-    )?;
-
-    replace_placeholder_in_file(
-        &output_dir.join("src/lib.rs"),
-        "LIB_PATH_PLACEHOLDER",
-        &lib_path,
-    )?;
-
-    // Copy original .so to project if needed
-    if needs_copy {
-        println!(
-            "Copying {:?} to {:?}",
-            so_path,
-            output_dir.join("original.so")
-        );
-        fs::copy(so_path, output_dir.join("original.so"))?;
-    }
+    let lib_rs_path = output_dir.join("src/lib.rs");
+    let mut content = fs::read_to_string(&lib_rs_path)?;
+    content = content.replace("{{FUNCTION_STUBS}}", &function_stubs);
+    content = content.replace("{{LIB_INCLUDE}}", &lib_include);
+    fs::write(&lib_rs_path, content)?;
 
     println!("Generated stub library in {}", output_dir.display());
     println!(

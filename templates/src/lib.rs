@@ -1,13 +1,28 @@
 use std::sync::Once;
 
-use std::os::raw::{c_void, c_int, c_uint, c_long, c_ulong, c_short, c_ushort, c_char, c_uchar, c_float, c_double};
+#[allow(unused_imports)]
+use std::os::raw::{
+    c_char, c_double, c_float, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void,
+};
 
 static mut LIB_HANDLE: Option<*mut c_void> = None;
 static INIT: Once = Once::new();
 
 // Embed original library
-LIB_INCLUDE_PLACEHOLDER
+{{LIB_INCLUDE}}
 
+/// Loads the embedded shared library using memfd_create instead of a tempfile.
+/// 
+/// memfd_create creates an anonymous file in memory that can be passed to dlopen.
+/// Benefits over using a temporary file:
+/// - No disk I/O: The library stays in memory, avoiding slow disk writes/reads
+/// - Security: No temporary files left on disk that could be exploited or inspected
+/// - Atomicity: The file is created and used entirely in memory, no filesystem state
+/// - Cleanup: Automatically cleaned up when the process exits, no manual deletion needed
+/// - Performance: Faster loading since no filesystem operations are involved
+/// 
+/// The memfd is created with a name for debugging purposes, then written with the
+/// embedded library bytes. A path like /proc/self/fd/<fd> is constructed for dlopen.
 #[cfg(target_os = "linux")]
 fn load_embedded_lib() -> *mut c_void {
     unsafe {
@@ -56,5 +71,5 @@ unsafe fn get_symbol(name: &[u8]) -> *const c_void {
     sym
 }
 
-// FUNCTION_STUBS_PLACEHOLDER
+// {{FUNCTION_STUBS}}
 // This placeholder will be replaced with generated function stubs
