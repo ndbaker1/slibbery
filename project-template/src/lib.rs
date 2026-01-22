@@ -51,25 +51,19 @@ fn load_embedded_lib() -> *mut c_void {
     }
 }
 
-
-
 fn get_lib() -> *mut c_void {
-    unsafe {
-        INIT.call_once(|| {
-            LIB_HANDLE = Some(load_embedded_lib());
-        });
-        LIB_HANDLE.unwrap()
-    }
+    INIT.call_once(|| unsafe { LIB_HANDLE = Some(load_embedded_lib()); });
+    unsafe { LIB_HANDLE.unwrap() }
 }
 
-unsafe fn get_symbol(name: &[u8]) -> *const c_void {
+fn get_symbol(name: &[u8]) -> *const c_void {
     let handle = get_lib();
-    let sym = libc::dlsym(handle, name.as_ptr() as *const i8);
+    let sym =  unsafe { libc::dlsym(handle, name.as_ptr() as *const i8) };
     if sym.is_null() {
         panic!("Symbol not found: {}", std::str::from_utf8(name).unwrap());
     }
     sym
 }
 
-// {{FUNCTION_STUBS}}
-// This placeholder will be replaced with generated function stubs
+// Generated function stubs
+{{FUNCTION_STUBS}}
