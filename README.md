@@ -13,20 +13,36 @@ function interception and mocking capabilities.
 
 ## Usage
 
-Generate a stub library by providing the shared library and its header file:
+Generate a stub library using the `header` subcommand:
 
 ```bash
-cargo run --release -- <input.so> <output_dir> <header.h>
+cargo run --release -- --output-dir <output_dir> --lib-path <input.so> header <header.h>
 cd <output_dir>
 cargo build --release
 LD_PRELOAD=./target/release/libmock_lib.so ./your_program
+```
+
+### CLI Options
+
+- `--output-dir, -o`: Output directory for the generated stub library
+- `--lib-path, -l`: Path to the input .so library
+- `header`: Subcommand to generate stubs from a C header file
+
+#### Getting Help
+
+```bash
+# Show global help
+cargo run --release -- --help
+
+# Show help for the header subcommand
+cargo run --release -- header --help
 ```
 
 ### Example
 
 ```bash
 # Generate stubs for NVIDIA NVML
-cargo run --release -- cuda/lib64/libnvidia-ml.so nvml_stubs cuda/include/nvml.h
+cargo run --release -- --output-dir nvml_stubs --lib-path cuda/lib64/libnvidia-ml.so header cuda/include/nvml.h
 cd nvml_stubs
 cargo build --release
 ```

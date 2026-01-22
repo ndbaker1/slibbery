@@ -22,7 +22,7 @@ gcc -shared -fPIC -g -o libtest.so test_lib.c
 
 # Generate stub library
 echo "Generating stub library..."
-cargo run --release libtest.so test_output test_lib.h
+cargo run --release -- --output-dir test_output --lib-path libtest.so header test_lib.h
 
 # Build the stub library
 echo "Building stub library..."
