@@ -1,6 +1,6 @@
-# Slibbery Project Template
+# Dyll Project Template
 
-This directory contains the template files used by Slibbery to generate stub shared libraries.
+This directory contains the template files used by Dyll to generate stub shared libraries.
 
 ## Files
 

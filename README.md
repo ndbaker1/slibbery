@@ -1,7 +1,7 @@
-# Slibbery - Shared Library Stub Generator
+# Dyll - Shared Library Stub Generator
 
-**Slibbery** (a pun on "shared lib foolery") generates drop-in replacement
-shared libraries for Linux with function interception and mocking capabilities.
+**Dyll** 🥒 generates drop-in replacement shared libraries for Linux with
+function interception and mocking capabilities.
 
 ## Features
 
