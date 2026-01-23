@@ -33,8 +33,8 @@ pub fn generate_function_stubs(
             format!(
                 r#"
 #[no_mangle]
-pub extern "C" fn {func}{args_def} -> {return_type} {{
-    let orig: extern "C" fn{args_def} -> {return_type} = unsafe {{ std::mem::transmute(get_symbol(b"{func}\0")) }};
+pub unsafe extern "C" fn {func}{args_def} -> {return_type} {{
+    let orig: extern "C" fn{args_def} -> {return_type} = std::mem::transmute(get_symbol(b"{func}\0"));
 
     // add your mock logic here
     eprintln!("[CALL] {func}");
@@ -53,8 +53,8 @@ pub extern "C" fn {func}{args_def} -> {return_type} {{
             format!(
                 r#"
 #[no_mangle]
-pub extern "C" fn {func}() {{
-    let orig: extern "C" fn() = unsafe {{ std::mem::transmute(get_symbol(b"{func}\0")) }};
+pub unsafe extern "C" fn {func}() {{
+    let orig: extern "C" fn() = std::mem::transmute(get_symbol(b"{func}\0"));
 
     // add your mock logic here
     eprintln!("[CALL] {func}");
