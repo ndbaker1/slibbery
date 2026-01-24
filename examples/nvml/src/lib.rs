@@ -843,17 +843,17 @@ pub unsafe extern "C" fn nvmlDeviceGetMinMaxFanSpeed(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetUUID(
-    arg0: nvmlDevice_t,
+    _: nvmlDevice_t,
     arg1: *mut c_char,
     arg2: c_uint,
 ) -> nvmlReturn_t {
-    let nvmlDeviceGetUUID: extern "C" fn(
-        arg0: nvmlDevice_t,
-        arg1: *mut c_char,
-        arg2: c_uint,
-    ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetUUID"));
     eprintln!("[CALL] {}", "nvmlDeviceGetUUID");
-    nvmlDeviceGetUUID(arg0, arg1, arg2)
+    std::ptr::copy_nonoverlapping(
+        "cf6cfd2f-058e-443e-9b9b-15296eee3e64\0".as_ptr() as *const c_char,
+        arg1,
+        arg2 as _,
+    );
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlSystemGetNvlinkBwMode(arg0: *mut c_uint) -> nvmlReturn_t {
@@ -1659,8 +1659,45 @@ pub unsafe extern "C" fn nvmlDeviceGetFieldValues(
         arg1: c_int,
         arg2: *mut nvmlFieldValue_t,
     ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetFieldValues"));
-    eprintln!("[CALL] {}", "nvmlDeviceGetFieldValues");
-    nvmlDeviceGetFieldValues(arg0, arg1, arg2)
+    eprintln!("[CALL] nvmlDeviceGetFieldValues");
+
+    for i in 0..arg1 as usize {
+        let ptr = arg2.add(i);
+        let f = &mut *ptr;
+        match f.fieldId {
+            NVML_FI_DEV_NVLINK_LINK_COUNT => {
+                // #define NVML_FI_DEV_NVLINK_LINK_COUNT 91
+                //
+                // see: https://docs.nvidia.com/deploy/archive/R520/nvml-api/group__nvmlFieldValueEnums.html
+                f.nvmlReturn = NVML_SUCCESS;
+                f.value = nvmlValue_st { usVal: 18 };
+            }
+            NVML_FI_DEV_NVLINK_GET_STATE => {
+                f.nvmlReturn = NVML_SUCCESS;
+                f.value = nvmlValue_st {
+                    uiVal: NVML_NVLINK_STATE_ACTIVE,
+                };
+            }
+            NVML_FI_DEV_NVLINK_GET_SPEED => {
+                f.nvmlReturn = NVML_SUCCESS;
+                f.value = nvmlValue_st {
+                    // stored in MB/s instead of GB/s which is what the tooling displays.
+                    uiVal: 200_000,
+                };
+            }
+            _ => {
+                // TODO: there's some UB going on here, and keeping this dbg! calls results in the
+                // other field values calls getting skipped when calling nvlink -s (which is
+                // actually good). the program hangs otherwise, so just figure this out later...
+                dbg!(f.fieldId);
+
+                // restructure the call to pull the top value.
+                nvmlDeviceGetFieldValues(arg0, 1, ptr);
+            }
+        }
+    }
+
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceSetPersistenceMode(
