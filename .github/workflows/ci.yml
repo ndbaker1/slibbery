@@ -6,22 +6,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Build NVML Stubs
+      - name: Build NVML Example
         run: |
-          wget -q https://developer.download.nvidia.com/compute/nvidia-driver/redist/nvidia_driver/linux-x86_64/nvidia_driver-linux-x86_64-590.48.01-archive.tar.xz
-          xz -d nvidia_driver-linux-x86_64-590.48.01-archive.tar.xz
-          tar xf nvidia_driver-linux-x86_64-590.48.01-archive.tar
-
-          wget -q https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvml_dev/linux-x86_64/cuda_nvml_dev-linux-x86_64-13.0.39-archive.tar.xz
-          xz -d cuda_nvml_dev-linux-x86_64-13.0.39-archive.tar.xz
-          tar xf cuda_nvml_dev-linux-x86_64-13.0.39-archive.tar
-
-          cargo run --release -- \
-            --output-dir nvml \
-            --lib-path nvidia_driver-linux-x86_64-590.48.01-archive/lib/libnvidia-ml.so.590.48.01 \
-            header cuda_nvml_dev-linux-x86_64-13.0.39-archive/include/nvml.h
-
-          cd nvml
-
-          cargo build --release && cp target/release/libmock_lib.so libnvidia-ml.so.1
-          LD_LIBRARY_PATH=. ../nvidia_driver-linux-x86_64-590.48.01-archive/sbin/nvidia-smi
+          cd examples/nvml
+          ./setup.sh
+          ./test.sh

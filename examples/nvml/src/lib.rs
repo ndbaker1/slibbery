@@ -1164,11 +1164,9 @@ pub unsafe extern "C" fn nvmlDeviceGetHandleBySerial(
     nvmlDeviceGetHandleBySerial(arg0, arg1)
 }
 #[no_mangle]
-pub unsafe extern "C" fn nvmlInitWithFlags(arg0: c_uint) -> nvmlReturn_t {
-    let nvmlInitWithFlags: extern "C" fn(arg0: c_uint) -> nvmlReturn_t =
-        std::mem::transmute(get_sym("nvmlInitWithFlags"));
+pub unsafe extern "C" fn nvmlInitWithFlags(_arg0: c_uint) -> nvmlReturn_t {
     eprintln!("[CALL] {}", "nvmlInitWithFlags");
-    nvmlInitWithFlags(arg0)
+    0
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlSystemGetConfComputeState(
