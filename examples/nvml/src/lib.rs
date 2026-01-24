@@ -270,10 +270,9 @@ pub unsafe extern "C" fn nvmlSystemGetDriverVersion(
     arg0: *mut c_char,
     arg1: c_uint,
 ) -> nvmlReturn_t {
-    let nvmlSystemGetDriverVersion: extern "C" fn(arg0: *mut c_char, arg1: c_uint) -> nvmlReturn_t =
-        std::mem::transmute(get_sym("nvmlSystemGetDriverVersion"));
     eprintln!("[CALL] {}", "nvmlSystemGetDriverVersion");
-    nvmlSystemGetDriverVersion(arg0, arg1)
+    std::ptr::copy_nonoverlapping("590-fake\0".as_ptr() as *const c_char, arg0, arg1 as _);
+    0
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetTotalEccErrors(
@@ -387,10 +386,9 @@ pub unsafe extern "C" fn nvmlDeviceSetConfComputeUnprotectedMemSize(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlSystemGetCudaDriverVersion_v2(arg0: *mut c_int) -> nvmlReturn_t {
-    let nvmlSystemGetCudaDriverVersion_v2: extern "C" fn(arg0: *mut c_int) -> nvmlReturn_t =
-        std::mem::transmute(get_sym("nvmlSystemGetCudaDriverVersion_v2"));
     eprintln!("[CALL] {}", "nvmlSystemGetCudaDriverVersion_v2");
-    nvmlSystemGetCudaDriverVersion_v2(arg0)
+    arg0.write(1320);
+    0
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetPowerManagementLimit(
@@ -4802,11 +4800,9 @@ pub unsafe extern "C" fn nvmlDeviceGetMPSComputeRunningProcesses() {
     nvmlDeviceGetMPSComputeRunningProcesses()
 }
 #[no_mangle]
-pub unsafe extern "C" fn nvmlInternalGetExportTable() {
-    let nvmlInternalGetExportTable: extern "C" fn() =
-        std::mem::transmute(get_sym("nvmlInternalGetExportTable"));
+pub unsafe extern "C" fn nvmlInternalGetExportTable() -> c_int {
     eprintln!("[CALL] {}", "nvmlInternalGetExportTable");
-    nvmlInternalGetExportTable()
+    0
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetCount() {

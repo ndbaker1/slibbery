@@ -69,6 +69,7 @@ impl BindgenProvider {
             .layout_tests(false)
             .default_enum_style(bindgen::EnumVariation::Consts)
             .prepend_enum_name(false)
+            .array_pointers_in_arguments(true)
             .sort_semantically(true)
             .generate()
             .map_err(|e| format!("Bindgen failed: {}", e))?;
