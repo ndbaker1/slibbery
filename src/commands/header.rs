@@ -1,25 +1,28 @@
+use tracing::{debug, info};
+
 use crate::cli::{Cli, HeaderArgs};
 use crate::elf;
 use crate::generator;
-use crate::providers::{BindgenProvider, SignatureProvider};
+use crate::providers::SignatureProvider;
+use crate::providers::header::BindgenProvider;
 use crate::template;
 
 pub fn run(cli: &Cli, args: &HeaderArgs) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Processing library: {}", cli.lib_path.display());
+    debug!("processing library: {}", cli.lib_path.display());
 
     let functions = elf::extract_function_symbols(&cli.lib_path)?;
-    println!("Found {} function symbols", functions.len());
 
-    println!("Using header file: {}", args.header_file.display());
+    info!("detected {} function symbols", functions.len());
+
+    info!("using header file: {}", args.header_file.display());
+
     let provider = BindgenProvider::new(args.header_file.to_str().unwrap().to_string());
     let bindgen_result = provider
         .get_signatures(cli.lib_path.to_str().unwrap())
-        .unwrap_or_else(|_| crate::BindgenResult {
-            signatures: std::collections::HashMap::new(),
-            bindings: String::new(),
-        });
-    println!(
-        "Parsed {} function signatures",
+        .unwrap_or_default();
+
+    info!(
+        "parsed {} function signatures",
         bindgen_result.signatures.len()
     );
 
@@ -33,8 +36,6 @@ pub fn run(cli: &Cli, args: &HeaderArgs) -> Result<(), Box<dyn std::error::Error
         &unknown_stubs,
         &bindgen_result.bindings,
     )?;
-
-    println!("Generated stub library in {}", cli.output_dir.display());
 
     Ok(())
 }

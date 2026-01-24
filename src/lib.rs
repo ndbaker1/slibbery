@@ -12,9 +12,3 @@ pub struct FunctionSignature {
     pub params: Vec<String>,
     pub return_type: String,
 }
-
-#[derive(Debug)]
-pub struct BindgenResult {
-    pub signatures: std::collections::HashMap<String, FunctionSignature>,
-    pub bindings: String,
-}

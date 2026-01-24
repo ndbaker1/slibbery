@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 use syn::{parse_str, FnArg, ForeignItem, Item, PatType, Type};
 
-use crate::BindgenResult;
-
 use super::SignatureProvider;
-use crate::FunctionSignature;
+use crate::{providers::BindgenResult, FunctionSignature};
 
 pub fn syn_type_to_rust(ty: &Type) -> String {
     match ty {
@@ -72,7 +70,6 @@ impl BindgenProvider {
             .default_enum_style(bindgen::EnumVariation::Consts)
             .prepend_enum_name(false)
             .sort_semantically(true)
-            .clang_args(&["-x", "c-header"])
             .generate()
             .map_err(|e| format!("Bindgen failed: {}", e))?;
 
@@ -212,7 +209,6 @@ const char* get_name(void);
     #[test]
     fn test_bindgen_provider_with_enums() {
         let header_content = r#"
-// Enum definition
 typedef enum nvmlReturn_enum {
     NVML_SUCCESS = 0,
     NVML_ERROR_UNKNOWN = 999
@@ -233,18 +229,12 @@ nvmlReturn_t nvmlShutdown(void);
         let init_sig = bindgen_result.signatures.get("nvmlInit_v2").unwrap();
         assert_eq!(init_sig.name, "nvmlInit_v2");
         assert_eq!(init_sig.params.len(), 0);
-        // Bindgen generates the enum type name
-        assert!(
-            init_sig.return_type.contains("nvmlReturn_enum")
-                || init_sig.return_type == "nvmlReturn_t"
-        );
+
+        assert!(init_sig.return_type == "nvmlReturn_t");
 
         let shutdown_sig = bindgen_result.signatures.get("nvmlShutdown").unwrap();
         assert_eq!(shutdown_sig.name, "nvmlShutdown");
         assert_eq!(shutdown_sig.params.len(), 0);
-        assert!(
-            shutdown_sig.return_type.contains("nvmlReturn_enum")
-                || shutdown_sig.return_type == "nvmlReturn_t"
-        );
+        assert!(shutdown_sig.return_type == "nvmlReturn_t");
     }
 }
