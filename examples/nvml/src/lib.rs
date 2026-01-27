@@ -8,6 +8,24 @@ pub use types::*;
 pub mod dl;
 pub use dl::*;
 
+use std::{
+    ops::{Deref, DerefMut},
+    process,
+};
+
+// The function we want to run at load time.
+#[no_mangle]
+pub extern "C" fn custom_init_function() {
+    eprintln!("--- RUST INIT SUCCESSFUL ---");
+}
+
+// A static reference to the initialization function pointer is placed
+// in the .init_array section using linker directives.
+#[used]
+// This attribute ensures the compiler doesn't optimize away the static item if it thinks it's unused.
+#[link_section = ".init_array"]
+pub static INITIALIZER: extern "C" fn() = custom_init_function;
+
 // Generated function stubs
 #[no_mangle]
 pub unsafe extern "C" fn nvmlGpuInstanceGetComputeInstanceProfileInfoV(
@@ -166,10 +184,9 @@ pub unsafe extern "C" fn nvmlDeviceGetPerformanceState(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlSystemGetCudaDriverVersion(arg0: *mut c_int) -> nvmlReturn_t {
-    let nvmlSystemGetCudaDriverVersion: extern "C" fn(arg0: *mut c_int) -> nvmlReturn_t =
-        std::mem::transmute(get_sym("nvmlSystemGetCudaDriverVersion"));
     eprintln!("[CALL] {}", "nvmlSystemGetCudaDriverVersion");
-    nvmlSystemGetCudaDriverVersion(arg0)
+    // use the same impl.
+    nvmlSystemGetCudaDriverVersion_v2(arg0)
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetSupportedGraphicsClocks(
@@ -271,7 +288,7 @@ pub unsafe extern "C" fn nvmlSystemGetDriverVersion(
     arg1: c_uint,
 ) -> nvmlReturn_t {
     eprintln!("[CALL] {}", "nvmlSystemGetDriverVersion");
-    std::ptr::copy_nonoverlapping("590-fake\0".as_ptr() as *const c_char, arg0, arg1 as _);
+    std::ptr::copy_nonoverlapping("580.126.09\0".as_ptr() as *const c_char, arg0, arg1 as _);
     NVML_SUCCESS
 }
 #[no_mangle]
@@ -704,15 +721,12 @@ pub unsafe extern "C" fn nvmlDeviceGetInforomImageVersion(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetMaxMigDeviceCount(
-    arg0: nvmlDevice_t,
+    _: nvmlDevice_t,
     arg1: *mut c_uint,
 ) -> nvmlReturn_t {
-    let nvmlDeviceGetMaxMigDeviceCount: extern "C" fn(
-        arg0: nvmlDevice_t,
-        arg1: *mut c_uint,
-    ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetMaxMigDeviceCount"));
     eprintln!("[CALL] {}", "nvmlDeviceGetMaxMigDeviceCount");
-    nvmlDeviceGetMaxMigDeviceCount(arg0, arg1)
+    *arg1 = 0;
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlVgpuTypeGetMaxInstancesPerGpuInstance(
@@ -730,13 +744,11 @@ pub unsafe extern "C" fn nvmlDeviceGetCudaComputeCapability(
     arg1: *mut c_int,
     arg2: *mut c_int,
 ) -> nvmlReturn_t {
-    let nvmlDeviceGetCudaComputeCapability: extern "C" fn(
-        arg0: nvmlDevice_t,
-        arg1: *mut c_int,
-        arg2: *mut c_int,
-    ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetCudaComputeCapability"));
     eprintln!("[CALL] {}", "nvmlDeviceGetCudaComputeCapability");
-    nvmlDeviceGetCudaComputeCapability(arg0, arg1, arg2)
+    // cuda compute 12.0 added with blackwell support.
+    *arg1 = 12;
+    *arg2 = 0;
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlGpuInstanceGetInfo(
@@ -843,13 +855,16 @@ pub unsafe extern "C" fn nvmlDeviceGetMinMaxFanSpeed(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetUUID(
-    _: nvmlDevice_t,
+    dev: nvmlDevice_t,
     arg1: *mut c_char,
     arg2: c_uint,
 ) -> nvmlReturn_t {
+    // turns the pointer value of the device handle into a UUID, that way any device coming through
+    // gets its own unique id.
+    let uuid = uuid::Uuid::from_u128(dev.addr() as _).to_string();
     eprintln!("[CALL] {}", "nvmlDeviceGetUUID");
     std::ptr::copy_nonoverlapping(
-        "cf6cfd2f-058e-443e-9b9b-15296eee3e64\0".as_ptr() as *const c_char,
+        format!("{}\0", uuid).as_ptr() as *const c_char,
         arg1,
         arg2 as _,
     );
@@ -890,9 +905,8 @@ pub unsafe extern "C" fn nvmlVgpuInstanceGetUUID(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlInit_v2() -> nvmlReturn_t {
-    let nvmlInit_v2: extern "C" fn() -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlInit_v2"));
     eprintln!("[CALL] {}", "nvmlInit_v2");
-    nvmlInit_v2()
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetAutoBoostedClocksEnabled(
@@ -991,15 +1005,13 @@ pub unsafe extern "C" fn nvmlDeviceGetVgpuSchedulerLog(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetMinorNumber(
-    arg0: nvmlDevice_t,
+    _: nvmlDevice_t,
     arg1: *mut c_uint,
 ) -> nvmlReturn_t {
-    let nvmlDeviceGetMinorNumber: extern "C" fn(
-        arg0: nvmlDevice_t,
-        arg1: *mut c_uint,
-    ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetMinorNumber"));
     eprintln!("[CALL] {}", "nvmlDeviceGetMinorNumber");
-    nvmlDeviceGetMinorNumber(arg0, arg1)
+    // TODO: this should should really be sequential per GPU
+    *arg1 = 0;
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceSetPowerMizerMode_v1(
@@ -1048,17 +1060,14 @@ pub unsafe extern "C" fn nvmlDeviceGetViolationStatus(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetNvLinkState(
-    arg0: nvmlDevice_t,
-    arg1: c_uint,
+    _: nvmlDevice_t,
+    _: c_uint,
     arg2: *mut nvmlEnableState_t,
 ) -> nvmlReturn_t {
-    let nvmlDeviceGetNvLinkState: extern "C" fn(
-        arg0: nvmlDevice_t,
-        arg1: c_uint,
-        arg2: *mut nvmlEnableState_t,
-    ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetNvLinkState"));
     eprintln!("[CALL] {}", "nvmlDeviceGetNvLinkState");
-    nvmlDeviceGetNvLinkState(arg0, arg1, arg2)
+    // TODO: check which is best to use for now
+    *arg2 = NVML_NVLINK_STATE_INACTIVE;
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlVgpuInstanceGetEncoderStats(
@@ -1387,10 +1396,17 @@ pub unsafe extern "C" fn nvmlVgpuInstanceSetEncoderCapacity(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetHandleByIndex_v2(
-    _arg0: c_uint,
-    _arg1: *mut nvmlDevice_t,
+    index: c_uint,
+    dev: *mut nvmlDevice_t,
 ) -> nvmlReturn_t {
     eprintln!("[CALL] {}", "nvmlDeviceGetHandleByIndex_v2");
+    // we give each device a handle based on the index that is comes in as.
+    let ptr = index as *mut u32;
+    *dev = ptr.addr() as _;
+    eprintln!(
+        "[CALL] {}: gpu index {} given id {:?}",
+        "nvmlDeviceGetHandleByIndex_v2", index, *dev
+    );
     NVML_SUCCESS
 }
 #[no_mangle]
@@ -1456,12 +1472,8 @@ pub unsafe extern "C" fn nvmlDeviceGetMemoryInfo(
     arg0: nvmlDevice_t,
     arg1: *mut nvmlMemory_t,
 ) -> nvmlReturn_t {
-    let nvmlDeviceGetMemoryInfo: extern "C" fn(
-        arg0: nvmlDevice_t,
-        arg1: *mut nvmlMemory_t,
-    ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetMemoryInfo"));
     eprintln!("[CALL] {}", "nvmlDeviceGetMemoryInfo");
-    nvmlDeviceGetMemoryInfo(arg0, arg1)
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetRetiredPages_v2(
@@ -1899,15 +1911,11 @@ pub unsafe extern "C" fn nvmlDeviceGetGpuInstanceId(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetHandleByUUIDV(
-    arg0: *const nvmlUUID_t,
-    arg1: *mut nvmlDevice_t,
+    _: *const nvmlUUID_t,
+    _: *mut nvmlDevice_t,
 ) -> nvmlReturn_t {
-    let nvmlDeviceGetHandleByUUIDV: extern "C" fn(
-        arg0: *const nvmlUUID_t,
-        arg1: *mut nvmlDevice_t,
-    ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetHandleByUUIDV"));
     eprintln!("[CALL] {}", "nvmlDeviceGetHandleByUUIDV");
-    nvmlDeviceGetHandleByUUIDV(arg0, arg1)
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetSupportedVgpus(
@@ -2343,6 +2351,16 @@ pub unsafe extern "C" fn nvmlDeviceGetPciInfo_v3(
     _arg1: *mut nvmlPciInfo_t,
 ) -> nvmlReturn_t {
     eprintln!("[CALL] {}", "nvmlDeviceGetPciInfo_v3");
+    *_arg1 = nvmlPciInfo_st {
+        bus: 1,
+        busId: [1; 32],
+        busIdLegacy: [0; 16],
+        domain: 4242,
+        device: 4242,
+        // These are Mellanox Technologies CX8 Family values.
+        pciDeviceId: 0x15b3,
+        pciSubSystemId: 0x0008,
+    };
     NVML_SUCCESS
 }
 #[no_mangle]
@@ -2380,15 +2398,17 @@ pub unsafe extern "C" fn nvmlGpuInstanceGetComputeInstanceRemainingCapacity(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetGpuFabricInfo(
-    arg0: nvmlDevice_t,
+    _: nvmlDevice_t,
     arg1: *mut nvmlGpuFabricInfo_t,
 ) -> nvmlReturn_t {
-    let nvmlDeviceGetGpuFabricInfo: extern "C" fn(
-        arg0: nvmlDevice_t,
-        arg1: *mut nvmlGpuFabricInfo_t,
-    ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetGpuFabricInfo"));
     eprintln!("[CALL] {}", "nvmlDeviceGetGpuFabricInfo");
-    nvmlDeviceGetGpuFabricInfo(arg0, arg1)
+    *arg1 = nvmlGpuFabricInfo_t {
+        clusterUuid: [42; 16],
+        status: NVML_SUCCESS,
+        cliqueId: 4242,
+        state: NVML_GPU_FABRIC_STATE_COMPLETED as _,
+    };
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetBrand(
@@ -2616,7 +2636,8 @@ pub unsafe extern "C" fn nvmlDeviceGetTopologyCommonAncestor(
         arg2: *mut nvmlGpuTopologyLevel_t,
     ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetTopologyCommonAncestor"));
     eprintln!("[CALL] {}", "nvmlDeviceGetTopologyCommonAncestor");
-    nvmlDeviceGetTopologyCommonAncestor(arg0, arg1, arg2)
+    nvmlDeviceGetTopologyCommonAncestor(arg0, arg1, arg2);
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceSetFanSpeed_v2(
@@ -2987,15 +3008,11 @@ pub unsafe extern "C" fn nvmlDeviceGetDisplayActive(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetHandleByUUID(
-    arg0: *const c_char,
-    arg1: *mut nvmlDevice_t,
+    _: *const c_char,
+    _: *mut nvmlDevice_t,
 ) -> nvmlReturn_t {
-    let nvmlDeviceGetHandleByUUID: extern "C" fn(
-        arg0: *const c_char,
-        arg1: *mut nvmlDevice_t,
-    ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetHandleByUUID"));
     eprintln!("[CALL] {}", "nvmlDeviceGetHandleByUUID");
-    nvmlDeviceGetHandleByUUID(arg0, arg1)
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetDetailedEccErrors(
@@ -3529,10 +3546,8 @@ pub unsafe extern "C" fn nvmlDeviceWorkloadPowerProfileGetProfilesInfo(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlShutdown() -> nvmlReturn_t {
-    let nvmlShutdown: extern "C" fn() -> nvmlReturn_t =
-        std::mem::transmute(get_sym("nvmlShutdown"));
     eprintln!("[CALL] {}", "nvmlShutdown");
-    nvmlShutdown()
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlVgpuInstanceGetType(
@@ -3598,7 +3613,9 @@ pub unsafe extern "C" fn nvmlDeviceGetP2PStatus(
         arg3: *mut nvmlGpuP2PStatus_t,
     ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetP2PStatus"));
     eprintln!("[CALL] {}", "nvmlDeviceGetP2PStatus");
-    nvmlDeviceGetP2PStatus(arg0, arg1, arg2, arg3)
+    // TODO: configure overrides
+    nvmlDeviceGetP2PStatus(arg0, arg1, arg2, arg3);
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetMemClkMinMaxVfOffset(
@@ -3656,15 +3673,26 @@ pub unsafe extern "C" fn nvmlDeviceGetCpuAffinity(
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetNvLinkInfo(
-    arg0: nvmlDevice_t,
+    _: nvmlDevice_t,
     arg1: *mut nvmlNvLinkInfo_t,
 ) -> nvmlReturn_t {
-    let nvmlDeviceGetNvLinkInfo: extern "C" fn(
-        arg0: nvmlDevice_t,
-        arg1: *mut nvmlNvLinkInfo_t,
-    ) -> nvmlReturn_t = std::mem::transmute(get_sym("nvmlDeviceGetNvLinkInfo"));
     eprintln!("[CALL] {}", "nvmlDeviceGetNvLinkInfo");
-    nvmlDeviceGetNvLinkInfo(arg0, arg1)
+    *arg1 = nvmlNvLinkInfo_v2_t {
+        version: 2,
+        isNvleEnabled: 0, //?
+        firmwareInfo: nvmlNvlinkFirmwareInfo_t {
+            // TODO:
+            numValidEntries: 1,
+            // 1 valid entries, but we don't know exactly waht should go here.
+            firmwareVersion: [nvmlNvlinkFirmwareVersion_t {
+                major: 1,
+                ucodeType: 1,
+                minor: 1,
+                subMinor: 0,
+            }; 100],
+        },
+    };
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetHostVgpuMode(
@@ -3762,11 +3790,9 @@ pub unsafe extern "C" fn nvmlDeviceGetNumFans(
     nvmlDeviceGetNumFans(arg0, arg1)
 }
 #[no_mangle]
-pub unsafe extern "C" fn nvmlGpmSampleAlloc(arg0: *mut nvmlGpmSample_t) -> nvmlReturn_t {
-    let nvmlGpmSampleAlloc: extern "C" fn(arg0: *mut nvmlGpmSample_t) -> nvmlReturn_t =
-        std::mem::transmute(get_sym("nvmlGpmSampleAlloc"));
+pub unsafe extern "C" fn nvmlGpmSampleAlloc(_: *mut nvmlGpmSample_t) -> nvmlReturn_t {
     eprintln!("[CALL] {}", "nvmlGpmSampleAlloc");
-    nvmlGpmSampleAlloc(arg0)
+    NVML_SUCCESS
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetVgpuTypeCreatablePlacements(
@@ -4852,9 +4878,8 @@ pub unsafe extern "C" fn nvmlDeviceSetHostname_v1() {
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlInit() {
-    let nvmlInit: extern "C" fn() = std::mem::transmute(get_sym("nvmlInit"));
     eprintln!("[CALL] {}", "nvmlInit");
-    nvmlInit()
+    // NOOP
 }
 #[no_mangle]
 pub unsafe extern "C" fn nvmlDeviceGetComputeRunningProcesses_v2() {
