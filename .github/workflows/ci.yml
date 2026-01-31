@@ -9,7 +9,8 @@ jobs:
       - name: Setup
         working-directory: examples/nvml
         run: |
-          ./setup.sh
+          ./download-nvidia-smi.sh
+          ./build.sh
       - name: Test
         working-directory: examples/nvml
         env:

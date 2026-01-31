@@ -8,11 +8,8 @@ ARG DRIVER_VERSION=580.126.09
 # 
 # downloads the nvidia management library .so file and uses it to build the nvml
 # interception library. needs to be cache in a low layer to prevent long rebuilds.
-RUN wget https://developer.download.nvidia.com/compute/nvidia-driver/redist/nvidia_driver/linux-sbsa/nvidia_driver-linux-sbsa-${DRIVER_VERSION}-archive.tar.xz
-RUN xz -d nvidia_driver-linux-sbsa-${DRIVER_VERSION}-archive.tar.xz
-RUN tar xvf nvidia_driver-linux-sbsa-${DRIVER_VERSION}-archive.tar \
-        nvidia_driver-linux-sbsa-${DRIVER_VERSION}-archive/lib/libnvidia-ml.so.${DRIVER_VERSION} \
-        --strip-components=2
+COPY download-* .
+RUN DRIVER_VERSION=${DRIVER_VERSION} ./download-libnvidia-ml.sh
 
 # only need the source code.
 COPY src src
