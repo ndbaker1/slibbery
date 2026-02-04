@@ -18,8 +18,4 @@ COPY Cargo.* .
 # make sure the SONAME is created. this is what gets used to identify identical
 # .so files during the symlink process.
 RUN SHARED_LIBRARY_PATH=/workdir/libnvidia-ml.so.${DRIVER_VERSION} RUSTFLAGS="-C link-arg=-Wl,-soname,libnvidia-ml.so.1" cargo build
-
-FROM alpine AS runner
-# copy built rust shared lib into default workdir under the name of the nvidia
-# management library.
-COPY --from=builder /workdir/target/debug/libmock_lib.so libnvidia-ml.so.1
+RUN cp -v /workdir/target/debug/libmock_lib.so libnvidia-ml.so.1

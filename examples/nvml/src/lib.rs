@@ -1703,10 +1703,8 @@ pub unsafe extern "C" fn nvmlDeviceGetFieldValues(
                 };
             }
             _ => {
-                // TODO: there's some UB going on here, and keeping this dbg! calls results in the
-                // other field values calls getting skipped when calling nvlink -s (which is
-                // actually good). the program hangs otherwise, so just figure this out later...
-                dbg!(f.fieldId);
+                // log the field idea for determining its purpose/usage.
+                log::debug!("fieldId = {}", f.fieldId);
 
                 // restructure the call to pull the top value.
                 nvmlDeviceGetFieldValues(arg0, 1, ptr);
